@@ -9,6 +9,12 @@ return {
     lazy = false,
     priority = 1000,
     config = function()
+      if vim.fn.filereadable(vim.fn.expand("~/.cache/wal/colors.json")) == 0 then
+        vim.schedule(function()
+          vim.api.nvim_echo({ { "pywal16: ~/.cache/wal/colors.json not found, skipping", "WarningMsg" } }, false, {})
+        end)
+        return
+      end
       require("pywal16").setup()
       vim.cmd("colorscheme pywal16")
 
