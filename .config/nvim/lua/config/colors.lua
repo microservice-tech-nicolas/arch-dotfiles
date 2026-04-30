@@ -1,0 +1,35 @@
+-- Define headline colors for render-markdown with matrix theme
+-- vim.api.nvim_create_autocmd("ColorScheme", {
+--   pattern = "matrix",
+--   callback = function()
+--     -- Matrix-themed headline colors (various shades of green)
+--     vim.api.nvim_set_hl(0, "Headline1Bg", { bg = "#0d3d0d", bold = true })
+--     vim.api.nvim_set_hl(0, "Headline1Fg", { fg = "#00ff00", bold = true })
+--
+--     vim.api.nvim_set_hl(0, "Headline2Bg", { bg = "#0a330a", bold = true })
+--     vim.api.nvim_set_hl(0, "Headline2Fg", { fg = "#00dd00", bold = true })
+--
+--     vim.api.nvim_set_hl(0, "Headline3Bg", { bg = "#082908", bold = true })
+--     vim.api.nvim_set_hl(0, "Headline3Fg", { fg = "#00bb00", bold = true })
+--
+--     vim.api.nvim_set_hl(0, "Headline4Bg", { bg = "#061f06", bold = true })
+--     vim.api.nvim_set_hl(0, "Headline4Fg", { fg = "#009900", bold = true })
+--
+--     vim.api.nvim_set_hl(0, "Headline5Bg", { bg = "#041504", bold = true })
+--     vim.api.nvim_set_hl(0, "Headline5Fg", { fg = "#007700", bold = true })
+--
+--     vim.api.nvim_set_hl(0, "Headline6Bg", { bg = "#020b02", bold = true })
+--     vim.api.nvim_set_hl(0, "Headline6Fg", { fg = "#005500", bold = true })
+--
+--     -- Also set checkbox colors to match matrix theme
+--     vim.api.nvim_set_hl(0, "RenderMarkdownChecked", { fg = "#00ff00", bold = true })
+--     vim.api.nvim_set_hl(0, "RenderMarkdownUnchecked", { fg = "#005500" })
+--   end,
+-- })
+--
+-- -- Trigger for current session
+-- vim.schedule(function()
+--   if vim.g.colors_name == "matrix" then
+--     vim.cmd("doautocmd ColorScheme matrix")
+--   end
+-- end)
