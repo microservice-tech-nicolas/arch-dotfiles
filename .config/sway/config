@@ -1,0 +1,191 @@
+### Variables
+set $mod Mod4
+set $left h
+set $down j
+set $up k
+set $right l
+set $term kitty
+set $menu rofi -show drun
+
+### Output
+output eDP-1 scale 1.33 resolution 2560x1600@240hz
+
+output DP-4 position 0 0
+output DP-5 position 0 0
+
+### Wallpaper — restore last wal theme on login (exec = once only, not on reload)
+exec ~/.config/fzfmenu/wal-restore
+
+### Input
+input type:touchpad {
+    tap enabled
+    natural_scroll enabled
+    dwt enabled
+}
+input type:keyboard {
+    xkb_numlock enabled
+}
+
+### Startup
+exec swaync
+exec swayidle -w \
+    timeout 600 'swaymsg "output * power off"' \
+    resume 'swaymsg "output * power on"' \
+    before-sleep 'swaylock -f -c 000000'
+exec /home/nic/.cargo/bin/wayland-pipewire-idle-inhibit
+exec /home/nic/.config/enable-webcam-mic.sh
+exec easyeffects --gapplication-service
+
+### Window appearance
+default_border none
+default_floating_border none
+gaps inner 4
+gaps outer 4
+smart_gaps off
+smart_borders off
+
+# wal colors applied via wal-apply; defaults here
+client.focused          #2D6991 #0e1e22 #c2c6c7 #2D6991 #2D6991
+client.unfocused        #0e1e22 #0e1e22 #5e6e72 #0e1e22 #0e1e22
+client.focused_inactive #0e1e22 #0e1e22 #5e6e72 #0e1e22 #0e1e22
+client.urgent           #9D6967 #9D6967 #c2c6c7 #9D6967 #9D6967
+
+### Window opacity — active 0.9, inactive 0.8
+for_window [app_id=".*"] opacity 0.9
+
+### fzfmenu floating rules
+for_window [app_id="fzfmenu"] {
+    floating enable
+    border pixel 0
+}
+for_window [app_id="fzfmenu" title="wallpick"]  resize set 1200 600
+for_window [app_id="fzfmenu" title="imgpick"]   resize set 1200 400
+for_window [app_id="fzfmenu" title="keybinds"]  resize set 900 500
+for_window [app_id="fzfmenu" title="layoutpick"] resize set 700 400
+for_window [app_id="fzfmenu" title="bookmarks"] resize set 1400 700
+for_window [app_id="kitty-music"] {
+    floating enable
+    border pixel 0
+    resize set 1400 800
+    move scratchpad
+}
+
+### Scratchpad terminal — persistent kitty+tmux session, toggle with Mod+grave
+for_window [app_id="kitty-scratch"] {
+    floating enable
+    border pixel 2
+    move scratchpad
+}
+exec kitty --app-id kitty-scratch --override background_opacity=0.95 -e tmux -L scratch new-session -A -s scratch
+
+### Key bindings — Basics
+bindsym $mod+t exec ~/.config/fzfmenu/opacity-toggle 0.9
+bindsym $mod+Return exec $term
+bindsym $mod+Shift+q kill
+bindsym $mod+d exec $menu
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+e exec swaynag -t warning -m 'Exit sway?' -B 'Yes' 'swaymsg exit'
+bindsym $mod+ctrl+alt+F12 exec shutdown -rf now
+bindsym $mod+ctrl+alt+F11 exec swaymsg output "*" power on; exec swaymsg output DP-4 power on; exec swaymsg output DP-5 power on
+bindsym $mod+ctrl+alt+F10 exec chvt 2
+floating_modifier $mod normal
+
+### Key bindings — fzfmenu popups
+bindsym $mod+s exec ~/.config/fzfmenu/fzfmenu imgpick
+bindsym $mod+p exec ~/.config/fzfmenu/fzfmenu keybinds
+bindsym $mod+b exec ~/.config/fzfmenu/fzfmenu wallpick
+bindsym $mod+o exec ~/.config/fzfmenu/fzfmenu layoutpick
+bindsym $mod+i exec ~/.config/fzfmenu/fzfmenu bookmarks
+bindsym $mod+m exec ~/.config/sway/music-toggle
+
+### Key bindings — Scratchpad
+bindsym $mod+grave [app_id="kitty-scratch"] scratchpad show; [app_id="kitty-scratch"] move position center
+
+### Key bindings — Focus
+bindsym $mod+$left  focus left
+bindsym $mod+$down  focus down
+bindsym $mod+$up    focus up
+bindsym $mod+$right focus right
+bindsym $mod+Left   focus left
+bindsym $mod+Down   focus down
+bindsym $mod+Up     focus up
+bindsym $mod+Right  focus right
+
+### Key bindings — Move
+bindsym $mod+Shift+$left  move left
+bindsym $mod+Shift+$down  move down
+bindsym $mod+Shift+$up    move up
+bindsym $mod+Shift+$right move right
+bindsym $mod+Shift+Left   move left
+bindsym $mod+Shift+Down   move down
+bindsym $mod+Shift+Up     move up
+bindsym $mod+Shift+Right  move right
+
+### Key bindings — Workspaces
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+bindsym $mod+7 workspace number 7
+bindsym $mod+8 workspace number 8
+bindsym $mod+9 workspace number 9
+bindsym $mod+0 workspace number 10
+bindsym $mod+Shift+1 move container to workspace number 1
+bindsym $mod+Shift+2 move container to workspace number 2
+bindsym $mod+Shift+3 move container to workspace number 3
+bindsym $mod+Shift+4 move container to workspace number 4
+bindsym $mod+Shift+5 move container to workspace number 5
+bindsym $mod+Shift+6 move container to workspace number 6
+bindsym $mod+Shift+7 move container to workspace number 7
+bindsym $mod+Shift+8 move container to workspace number 8
+bindsym $mod+Shift+9 move container to workspace number 9
+bindsym $mod+Shift+0 move container to workspace number 10
+
+### Key bindings — Layout
+bindsym $mod+v splitv
+bindsym $mod+Shift+v splith
+bindsym $mod+e layout toggle split
+bindsym $mod+f fullscreen
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+space focus mode_toggle
+bindsym $mod+a focus parent
+bindsym $mod+minus       resize shrink width  50px
+bindsym $mod+Shift+minus resize shrink height 50px
+
+### Key bindings — Quick resize (like niri Mod+equal / Mod+minus)
+bindsym $mod+equal             resize grow   width  50px
+bindsym $mod+shift+equal       resize grow   height 50px
+
+### Key bindings — Resize mode
+mode "resize" {
+    bindsym $left  resize shrink width  10px
+    bindsym $down  resize grow   height 10px
+    bindsym $up    resize shrink height 10px
+    bindsym $right resize grow   width  10px
+    bindsym Left   resize shrink width  10px
+    bindsym Down   resize grow   height 10px
+    bindsym Up     resize shrink height 10px
+    bindsym Right  resize grow   width  10px
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+bindsym $mod+r mode "resize"
+
+### Key bindings — Media / System
+bindsym --locked XF86AudioMute         exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+bindsym --locked XF86AudioLowerVolume  exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym --locked XF86AudioRaiseVolume  exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym --locked XF86AudioMicMute      exec pactl set-source-mute @DEFAULT_SOURCE@ toggle
+bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
+bindsym --locked XF86MonBrightnessUp   exec brightnessctl set 5%+
+bindsym Print exec grim -g "$(slurp)" - | tee ~/Pictures/Screenshots/screenshot_$(date +%Y-%m-%d_%H-%M-%S).png | wl-copy && notify-send "Screenshot Saved"
+bindsym $mod+Insert exec grim -g "$(slurp)" - | tee ~/Pictures/Screenshots/screenshot_$(date +%Y-%m-%d_%H-%M-%S).png | wl-copy && notify-send "Screenshot Saved"
+
+### Bar — managed by systemd (auto-restarts), sway registers the bar socket
+bar {
+    swaybar_command waybar
+}
+
+include /etc/sway/config.d/*

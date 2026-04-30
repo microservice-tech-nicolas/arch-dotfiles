@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Check if window exists anywhere in the tree
+EXISTS=$(swaymsg -t get_tree | python3 -c "
+import json,sys
+tree = json.load(sys.stdin)
+def find(node):
+    if node.get('app_id') == 'kitty-music':
+        print(node.get('scratchpad_state','none'))
+        return
+    for n in node.get('nodes',[]) + node.get('floating_nodes',[]):
+        find(n)
+find(tree)
+")
+
+if [ -z "$EXISTS" ]; then
+    # Not running — spawn it, scratchpad rule will catch it
+    kitty \
+        --app-id kitty-music \
+        --override hide_window_decorations=yes \
+        --override window_padding_width=0 \
+        --override background_opacity=0.95 \
+        --override close_on_child_death=yes \
+        -e /home/nic/.cargo/bin/youtui
+elif [ "$EXISTS" = "none" ]; then
+    # Visible — hide it
+    swaymsg '[app_id="kitty-music"]' move scratchpad
+else
+    # In scratchpad — show it
+    swaymsg '[app_id="kitty-music"]' scratchpad show
+    swaymsg '[app_id="kitty-music"]' move position center
+fi
