@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# wallpick — fuzzy wallpaper picker with image preview
+# Selecting a wallpaper runs wal-apply to set it and theme everything
+# Launch via: fzfmenu wallpick
+
+WALLDIR="${1:-$HOME/Pictures/wallpapers}"
+
+SELECTED=$(
+    find "$WALLDIR" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) \
+    | sort \
+    | fzf \
+        --ansi \
+        --layout=reverse \
+        --border=none \
+        --margin=0 \
+        --padding=0 \
+        --color='bg:#090c1c,bg+:#0f263a,fg:#c2c2c6,fg+:#c2c2c6,hl:#616e85,hl+:#616e85,prompt:#70705a,pointer:#b8493c,info:#616b96,header:#616b96' \
+        --prompt='  ' \
+        --pointer='▶' \
+        --preview-window='right:65%' \
+        --preview='kitten icat --clear --transfer-mode=memory --unicode-placeholder --stdin=no --place=${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}@0x0 {}' \
+        --header='enter: apply  esc: quit' \
+        --with-nth=-1 \
+        --delimiter=/
+)
+
+[[ -z "$SELECTED" ]] && exit 0
+
+swaymsg exec "'$HOME/.config/fzfmenu/wal-apply' '$SELECTED'"
+exit 0

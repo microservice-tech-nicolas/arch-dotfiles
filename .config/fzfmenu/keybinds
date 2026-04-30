@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# keybinds — fuzzy searchable keybind launcher parsed from sway config
+# Launch via: fzfmenu keybinds
+
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/sway/config"
+
+parse_binds() {
+    grep -v '^\s*#' "$CONFIG" \
+    | grep -E '^\s*bindsym' \
+    | while IFS= read -r line; do
+        # strip leading whitespace and 'bindsym'
+        line=$(echo "$line" | sed 's/^\s*bindsym\s*//')
+        # handle --locked flag
+        line=$(echo "$line" | sed 's/^--locked\s*//')
+        # key is the first token, rest is the action
+        key=$(echo "$line" | awk '{print $1}')
+        action=$(echo "$line" | cut -d' ' -f2-)
+        [[ -z "$key" || -z "$action" ]] && continue
+        printf '%s\t%s\n' "$key" "$action"
+    done
+}
+
+SELECTED=$(
+    parse_binds \
+    | awk -F'\t' '{ printf "%-32s  %s\n", $1, $2 }' \
+    | fzf \
+        --ansi \
+        --layout=reverse \
+        --border=none \
+        --margin=0 \
+        --padding=0 \
+        --color='bg:#090c1c,bg+:#0f263a,fg:#c2c2c6,fg+:#c2c2c6,hl:#616e85,hl+:#616e85,prompt:#70705a,pointer:#b8493c,info:#616b96,header:#616b96' \
+        --prompt='  ' \
+        --pointer='▶' \
+        --no-preview \
+        --header='enter: execute  esc: quit'
+)
+
+[[ -z "$SELECTED" ]] && exit 0
+
+KEY=$(echo "$SELECTED" | awk '{print $1}')
+ACTION=$(parse_binds | awk -F'\t' -v k="$KEY" '$1 == k {print $2; exit}')
+
+[[ -z "$ACTION" ]] && exit 0
+
+# Execute: if action starts with 'exec', run the command; else use swaymsg
+if echo "$ACTION" | grep -qE '^exec\s'; then
+    CMD=$(echo "$ACTION" | sed 's/^exec\s*//')
+    sh -c "$CMD" &
+else
+    swaymsg "$ACTION"
+fi

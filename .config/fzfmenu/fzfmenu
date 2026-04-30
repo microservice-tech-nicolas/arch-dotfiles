@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# fzfmenu — launch any script as a floating kitty popup
+# Usage: fzfmenu [--width W] [--height H] <script> [args...]
+# Width/height are in pixels, controlled via niri window rules using the title.
+
+WIDTH=1000
+HEIGHT=500
+
+while [[ "$1" == --* ]]; do
+    case "$1" in
+        --width)  WIDTH="$2";  shift 2 ;;
+        --height) HEIGHT="$2"; shift 2 ;;
+        *) break ;;
+    esac
+done
+
+SCRIPT_NAME="$1"
+SCRIPT="$HOME/.config/fzfmenu/$1"
+shift
+
+# Set window title to "scriptname WxH" so niri can match and size it
+exec kitty \
+    --app-id fzfmenu \
+    --title "$SCRIPT_NAME" \
+    --override hide_window_decorations=yes \
+    --override window_padding_width=0 \
+    --override background_opacity=1 \
+    --override background=#090c1c \
+    --override close_on_child_death=yes \
+    -e "$SCRIPT" "$@"

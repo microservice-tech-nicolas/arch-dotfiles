@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Usage: opacity-toggle [transparent-value]
+# transparent-value passed from sway config — change it there, not here
+TRANSPARENT="${1:-0.9}"
+FLAG=/tmp/sway-opaque
+
+if [ -f "$FLAG" ]; then
+    rm "$FLAG"
+    swaymsg opacity "$TRANSPARENT"
+else
+    touch "$FLAG"
+    swaymsg opacity 1.0
+fi

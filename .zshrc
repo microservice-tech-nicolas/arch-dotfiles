@@ -184,3 +184,7 @@ alias logout='
     echo "Not in niri or sway"
   fi
 '
+
+# Starship prompt — replaces oh-my-zsh theme
+# Installed by arch-eyecandy; comment out ZSH_THEME above when using this
+command -v starship &>/dev/null && eval "$(starship init zsh)"

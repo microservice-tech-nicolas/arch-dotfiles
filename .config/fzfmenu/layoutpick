@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# layoutpick — fuzzy sway layout/behaviour switcher
+# Launch via: fzfmenu layoutpick
+
+SELECTED=$(cat <<'LAYOUTS' | fzf \
+    --ansi \
+    --layout=reverse \
+    --border=none \
+    --margin=0 \
+    --padding=0 \
+    --color='bg:#090c1c,bg+:#0f263a,fg:#c2c2c6,fg+:#c2c2c6,hl:#616e85,hl+:#616e85,prompt:#70705a,pointer:#b8493c,info:#616b96,header:#616b96' \
+    --prompt='  ' \
+    --pointer='▶' \
+    --header='enter: apply  esc: quit' \
+    --with-nth=1 \
+    --delimiter='|'
+tiling         — default tiling layout|layout splith
+split vertical — stack windows vertically|layout splitv
+tabbed         — tabs across the top|layout tabbed
+stacking       — stacked list view|layout stacking
+toggle split   — toggle horiz/vert split|layout toggle split
+floating on    — make focused window floating|floating enable
+floating off   — return focused window to tiling|floating disable
+toggle float   — toggle floating on focused|floating toggle
+fullscreen     — toggle fullscreen on focused|fullscreen toggle
+sticky         — window follows across workspaces|sticky toggle
+LAYOUTS
+)
+
+[[ -z "$SELECTED" ]] && exit 0
+
+CMD=$(echo "$SELECTED" | cut -d'|' -f2)
+# Run after kitty popup closes so the command targets the workspace, not the popup
+swaymsg exec "swaymsg $CMD"

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# bookmarks — fuzzy buku bookmark picker
+# enter       → open in existing qutebrowser (or launch if not running)
+# ctrl-w      → open in new qutebrowser window
+# ctrl-t      → open in firefox
+# ctrl-y      → copy URL to clipboard
+# Launch via: fzfmenu bookmarks
+
+# buku -f 4: index \t url \t title \t tags
+DATA=$(buku -p -f 4 --nostdin 2>/dev/null | grep -v '^buku:')
+[[ -z "$DATA" ]] && exit 0
+
+# Build display: "Folder / Sub    Title"  with index hidden in field 1
+DISPLAY=$(echo "$DATA" | awk -F'\t' '{
+    idx   = $1
+    url   = $2
+    title = $3 ? $3 : $2
+    tags  = $4
+    # strip buku leading/trailing commas, convert to "Folder / Sub" path
+    gsub(/^,|,$/, "", tags)
+    gsub(/,/, " / ", tags)
+    folder = (tags != "") ? tags : "—"
+    # layout: title (left, wide) | folder path (right, muted)
+    printf "%s\t%-55s  \033[2m%s\033[0m\n", idx, title, folder
+}')
+
+SELECTED=$(echo "$DISPLAY" | cut -f2- | fzf \
+    --ansi \
+    --layout=reverse \
+    --border=none \
+    --margin=0 \
+    --padding=0 \
+    --color='bg:#090c1c,bg+:#0f263a,fg:#c2c2c6,fg+:#c2c2c6,hl:#616e85,hl+:#616e85,prompt:#70705a,pointer:#b8493c,info:#616b96,header:#616b96' \
+    --prompt='  ' \
+    --pointer='▶' \
+    --no-preview \
+    --header='enter: qutebrowser  ctrl-w: new window  ctrl-t: firefox  ctrl-y: copy' \
+    --expect='ctrl-w,ctrl-t,ctrl-y')
+
+[[ -z "$SELECTED" ]] && exit 0
+
+# First line = key pressed (empty if plain enter), second line = selection
+KEY=$(echo "$SELECTED" | head -1)
+LINE=$(echo "$SELECTED" | tail -1)
+
+# Look up index from DISPLAY table
+IDX=$(echo "$DISPLAY" | awk -F'\t' -v sel="$LINE" '$2 == sel {print $1; exit}')
+[[ -z "$IDX" ]] && exit 0
+
+# Get URL
+URL=$(echo "$DATA" | awk -F'\t' -v idx="$IDX" '$1 == idx {print $2; exit}')
+[[ -z "$URL" ]] && exit 0
+
+case "$KEY" in
+    ctrl-y)
+        echo -n "$URL" | wl-copy
+        notify-send "Bookmarks" "Copied to clipboard" -t 2000
+        ;;
+    ctrl-t)
+        firefox "$URL" &
+        ;;
+    ctrl-w)
+        qutebrowser --target window "$URL" &
+        ;;
+    *)
+        # Open in existing qutebrowser instance if running, else launch new
+        if pgrep -x qutebrowser &>/dev/null; then
+            qutebrowser --target auto "$URL" &
+        else
+            qutebrowser "$URL" &
+        fi
+        ;;
+esac
