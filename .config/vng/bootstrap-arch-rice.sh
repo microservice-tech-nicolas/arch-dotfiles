@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # bootstrap-arch-rice.sh — one-time Arch rootfs setup for vng ricing
-# Uses arch-chroot (bundled in bootstrap tarball) — no manual bind mounts.
-# After this completes, use rice.sh for daily sessions.
+#
+# Step 1: download & extract the Arch bootstrap tarball
+# Step 2: boot it with vng --rw --systemd (pacman works properly from inside)
+# Step 3: run pacman setup inside the VM, then exit
+# After this, use rice.sh for daily sessions.
 set -euo pipefail
 
 ROOTFS_BASE="${HOME}/rootfs"
 ROOTFS="${ROOTFS_BASE}/arch-rice"
-MIRROR="https://geo.mirror.pkgbuild.com"
+MIRROR="https://archlinux.cu.be"
 TARBALL="archlinux-bootstrap-x86_64.tar.zst"
 
 # ── preflight ────────────────────────────────────────────────────────────────
@@ -30,34 +33,37 @@ echo "  ==================="
 echo "  Rootfs: ${ROOTFS}"
 echo ""
 
-# ── download & extract ───────────────────────────────────────────────────────
+# ── Step 1: download & extract ───────────────────────────────────────────────
 mkdir -p "${ROOTFS_BASE}"
 cd "${ROOTFS_BASE}"
 
 echo "==> Downloading Arch bootstrap tarball..."
-curl -L# "${MIRROR}/iso/latest/${TARBALL}" -o "${TARBALL}"
+curl -LO "${MIRROR}/iso/latest/${TARBALL}"
 
 echo "==> Extracting..."
 sudo tar --zstd -xf "${TARBALL}"
 sudo mv root.x86_64 arch-rice
 rm -f "${TARBALL}"
 
-# ── configure mirror ─────────────────────────────────────────────────────────
-echo "==> Configuring pacman mirror..."
-echo "Server = ${MIRROR}/\$repo/os/\$arch" \
-  | sudo tee -a "${ROOTFS}/etc/pacman.d/mirrorlist" > /dev/null
-
-# ── write setup script directly into rootfs ──────────────────────────────────
+# ── Step 2: write setup script into rootfs, boot with vng, run it inside ─────
+# vng boots the rootfs with --rw so pacman writes persist.
+# pacman works correctly inside the VM (real /proc /sys /dev, real kernel).
 sudo tee "${ROOTFS}/arch-setup.sh" > /dev/null << 'SETUPEOF'
 #!/bin/bash
 set -euo pipefail
+
+# Uncomment Belgian mirror
+sed -i 's|^#Server = https://archlinux.cu.be|Server = https://archlinux.cu.be|' \
+    /etc/pacman.d/mirrorlist
 
 echo "==> Initializing pacman keyring..."
 pacman-key --init
 pacman-key --populate archlinux
 
-echo "==> Syncing and installing base..."
+echo "==> Syncing packages..."
 pacman -Syu --noconfirm
+
+echo "==> Installing base..."
 pacman -S --noconfirm --needed \
     base sudo git curl networkmanager \
     mesa vulkan-virtio seatd dbus-broker dbus-broker-units
@@ -71,7 +77,7 @@ Server = https://raw.githubusercontent.com/microservice-tech-nicolas/arch-packag
 EOF
 pacman -Sy --noconfirm
 
-echo "==> Installing full rice stack..."
+echo "==> Installing full rice stack from nic-repo..."
 pacman -S --noconfirm \
     arch-core arch-dev arch-pass arch-gui-sway arch-eyecandy \
     arch-debug arch-ops arch-ai nic-nvim nic-dotfiles
@@ -85,19 +91,26 @@ echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel
 chmod 440 /etc/sudoers.d/wheel
 
 systemctl enable seatd dbus-broker NetworkManager
-systemd-machine-id-setup 2>/dev/null || true
 
 echo ""
-echo "==> Setup complete!"
+echo "==> Setup complete! Type 'exit' or poweroff to return to host."
 SETUPEOF
 
 sudo chmod +x "${ROOTFS}/arch-setup.sh"
 
-# ── arch-chroot handles all bind mounts itself — no manual mounting needed ────
 echo ""
-echo "==> Running setup inside arch-chroot (10-20 min)..."
+echo "==> Booting Arch rootfs in vng (--rw so changes persist)..."
+echo "    Running setup automatically inside the VM..."
 echo ""
-sudo "${ROOTFS}/bin/arch-chroot" "${ROOTFS}" /arch-setup.sh
+
+# Boot the rootfs with vng, run setup script inside, exit when done
+vng -r \
+    --root "${ROOTFS}" \
+    --user root \
+    --rw \
+    --network user \
+    --systemd \
+    -- bash /arch-setup.sh
 
 sudo rm -f "${ROOTFS}/arch-setup.sh"
 

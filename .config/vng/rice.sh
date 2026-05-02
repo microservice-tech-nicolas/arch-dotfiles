@@ -1,82 +1,71 @@
 #!/usr/bin/env bash
 # rice.sh — daily ricing loop for arch-rice vng VM
-# Boots the Arch rootfs with host dotfiles visible read-only inside the guest.
-# Default (no --rw): snapshot mode — exit and rerun to get a clean slate.
+# Snapshot mode by default — exit and rerun for a clean slate.
 #
 # Usage:
-#   rice.sh            — boot into sway (full GUI, snapshot)
-#   rice.sh shell      — drop into zsh (no GUI, snapshot)
-#   rice.sh rw         — persistent writes (use for installs/config changes)
-#   rice.sh update     — upgrade all nic packages inside the VM (persistent)
+#   rice.sh            — sway GUI (snapshot, dotfiles overlaid from host)
+#   rice.sh shell      — zsh shell (snapshot)
+#   rice.sh rw         — persistent writes (for installs)
+#   rice.sh update     — upgrade all nic packages (persistent)
 
 ROOTFS="${HOME}/rootfs/arch-rice"
+DOTFILES_CONFIG="${HOME}/.config"
 
-# ── preflight ────────────────────────────────────────────────────────────────
 if [ ! -d "${ROOTFS}" ]; then
-  echo "ERROR: rootfs not found at ${ROOTFS}"
-  echo "Run bootstrap first: ~/.config/vng/bootstrap-arch-rice.sh"
+  echo "ERROR: rootfs not found. Run: ~/.config/vng/bootstrap-arch-rice.sh"
   exit 1
 fi
 command -v vng >/dev/null || { echo "ERROR: vng not found."; exit 1; }
 
 MODE="${1:-gui}"
 
-# ── base vng flags ───────────────────────────────────────────────────────────
-VNG_ARGS=(
-  --root    "${ROOTFS}"
-  --user    rice
-  --network user          # NAT networking so pacman/git work inside guest
-  --graphics              # virtio-gpu output
-)
-
-# ── mount host dotfiles read-only inside the guest ───────────────────────────
-# --rodir only works on directories (9p is directory-based).
-# We mount ~/.config as a whole — covers nvim, sway, kitty, tmux, starship etc.
-# For .zshrc/.zprofile we mount a tmpdir with copies so the guest sees them.
-if [ -d "${HOME}/.config" ]; then
-  VNG_ARGS+=(--rodir="/home/rice/.config=${HOME}/.config")
-fi
-
-# Collect shell dotfiles into a temp dir and mount it as the guest home overlay
-_DOT_TMP=$(mktemp -d /tmp/rice-dotfiles-XXXX)
-trap 'rm -rf "${_DOT_TMP}"' EXIT
-for f in .zshrc .zprofile .bashrc .profile; do
-  [ -f "${HOME}/${f}" ] && cp "${HOME}/${f}" "${_DOT_TMP}/${f}"
-done
-[ -n "$(ls -A "${_DOT_TMP}")" ] && \
-  VNG_ARGS+=(--rodir="/home/rice=${_DOT_TMP}")
-
-# ── dispatch ─────────────────────────────────────────────────────────────────
 case "${MODE}" in
   gui)
-    echo "==> Booting arch-rice into sway (snapshot — changes lost on exit)..."
-    echo "    Mod+b  wallpaper picker"
-    echo "    Mod+Enter  terminal"
+    echo "==> Booting arch-rice into sway (snapshot mode)..."
+    echo "    Mod+b = wallpaper picker  |  Mod+Enter = terminal"
     echo ""
-    # --exec runs a command as the user after login, without --systemd
-    vng "${VNG_ARGS[@]}" --exec sway
+    # Exactly as per the instructions: --systemd -g --overlay-rwdir for dotfiles
+    vng -r \
+      --root "${ROOTFS}" \
+      --user rice \
+      --systemd \
+      -g \
+      --network user \
+      --overlay-rwdir "/home/rice/.config=${DOTFILES_CONFIG}" \
+      -- sway
     ;;
 
   shell)
     echo "==> Booting arch-rice into zsh (snapshot mode)..."
-    vng "${VNG_ARGS[@]}" --exec zsh
+    vng -r \
+      --root "${ROOTFS}" \
+      --user rice \
+      --systemd \
+      --network user \
+      --overlay-rwdir "/home/rice/.config=${DOTFILES_CONFIG}" \
+      -- zsh
     ;;
 
   rw)
-    echo "==> Booting arch-rice with PERSISTENT writes..."
-    echo "    WARNING: changes survive across reboots."
-    vng "${VNG_ARGS[@]}" --rw --exec zsh
+    echo "==> Booting with PERSISTENT writes..."
+    vng -r \
+      --root "${ROOTFS}" \
+      --user rice \
+      --rw \
+      --systemd \
+      --network user \
+      -- zsh
     ;;
 
   update)
-    echo "==> Updating arch-rice packages (persistent write)..."
-    vng "${VNG_ARGS[@]}" --rw --exec bash -c '
-      pacman -Syu --noconfirm && \
-      pacman -S --noconfirm \
-        arch-core arch-dev arch-gui-sway arch-eyecandy \
-        arch-debug arch-ops arch-ai nic-nvim nic-dotfiles && \
-      echo "==> Update complete."
-    '
+    echo "==> Updating nic packages (persistent)..."
+    vng -r \
+      --root "${ROOTFS}" \
+      --user root \
+      --rw \
+      --network user \
+      --systemd \
+      -- bash -c 'pacman -Syu --noconfirm && pacman -S --noconfirm arch-core arch-dev arch-gui-sway arch-eyecandy arch-debug arch-ops arch-ai nic-nvim nic-dotfiles && echo done'
     ;;
 
   *)
