@@ -30,19 +30,21 @@ VNG_ARGS=(
 )
 
 # ── mount host dotfiles read-only inside the guest ───────────────────────────
-# --rodir=guestpath=hostpath makes the host dir visible at guestpath in the VM
-# Changes made in the guest to these dirs do NOT touch the host.
+# --rodir only works on directories (9p is directory-based).
+# We mount ~/.config as a whole — covers nvim, sway, kitty, tmux, starship etc.
+# For .zshrc/.zprofile we mount a tmpdir with copies so the guest sees them.
 if [ -d "${HOME}/.config" ]; then
   VNG_ARGS+=(--rodir="/home/rice/.config=${HOME}/.config")
 fi
-if [ -f "${HOME}/.zshrc" ]; then
-  # Individual files: mount parent dir read-only and symlink, or use rwdir
-  # Simplest: mount home dotfiles dir read-only
-  VNG_ARGS+=(--rodir="/home/rice/.zshrc=${HOME}/.zshrc")
-fi
-if [ -f "${HOME}/.zprofile" ]; then
-  VNG_ARGS+=(--rodir="/home/rice/.zprofile=${HOME}/.zprofile")
-fi
+
+# Collect shell dotfiles into a temp dir and mount it as the guest home overlay
+_DOT_TMP=$(mktemp -d /tmp/rice-dotfiles-XXXX)
+trap 'rm -rf "${_DOT_TMP}"' EXIT
+for f in .zshrc .zprofile .bashrc .profile; do
+  [ -f "${HOME}/${f}" ] && cp "${HOME}/${f}" "${_DOT_TMP}/${f}"
+done
+[ -n "$(ls -A "${_DOT_TMP}")" ] && \
+  VNG_ARGS+=(--rodir="/home/rice=${_DOT_TMP}")
 
 # ── dispatch ─────────────────────────────────────────────────────────────────
 case "${MODE}" in
