@@ -9,7 +9,7 @@ set -euo pipefail
 
 ROOTFS_BASE="${HOME}/rootfs"
 ROOTFS="${ROOTFS_BASE}/arch-rice"
-MIRROR="https://archlinux.cu.be"
+MIRROR="https://geo.mirror.pkgbuild.com"
 TARBALL="archlinux-bootstrap-x86_64.tar.zst"
 
 # ── preflight ────────────────────────────────────────────────────────────────
@@ -52,9 +52,9 @@ sudo tee "${ROOTFS}/arch-setup.sh" > /dev/null << 'SETUPEOF'
 #!/bin/bash
 set -euo pipefail
 
-# Uncomment Belgian mirror
-sed -i 's|^#Server = https://archlinux.cu.be|Server = https://archlinux.cu.be|' \
-    /etc/pacman.d/mirrorlist
+# Append geo mirror (bootstrap mirrorlist has all commented out)
+echo "Server = https://geo.mirror.pkgbuild.com/\$repo/os/\$arch" \
+    >> /etc/pacman.d/mirrorlist
 
 echo "==> Initializing pacman keyring..."
 pacman-key --init
