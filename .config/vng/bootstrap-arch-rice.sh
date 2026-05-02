@@ -99,24 +99,17 @@ SETUPEOF
 sudo chmod +x "${ROOTFS}/arch-setup.sh"
 
 echo ""
-echo "==> Booting Arch rootfs in vng (--rw so changes persist)..."
-echo "    Running setup automatically inside the VM..."
-echo ""
-
-# Boot the rootfs with vng, run setup script inside, exit when done
-vng -r \
-    --root "${ROOTFS}" \
-    --user root \
-    --rw \
-    --network user \
-    --systemd \
-    -- bash /arch-setup.sh
-
-sudo rm -f "${ROOTFS}/arch-setup.sh"
-
-echo ""
 echo "=============================="
-echo " Bootstrap complete!"
-echo " Run: ~/.config/vng/rice.sh"
+echo " Arch rootfs ready at ${ROOTFS}"
 echo "=============================="
+echo ""
+echo " Now boot it with vng and run the setup script inside:"
+echo ""
+echo "   vng -r --root ${ROOTFS} --user root --rw --network user --systemd"
+echo ""
+echo " Inside the VM, run:"
+echo "   bash /arch-setup.sh"
+echo ""
+echo " Then exit the VM. Your rice is ready."
+echo " After that: ~/.config/vng/rice.sh"
 echo ""
