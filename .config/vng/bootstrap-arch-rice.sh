@@ -88,7 +88,7 @@ vng -r \
     --rw \
     --network user \
     --systemd \
-    -- bash /arch-setup.sh
+    --exec "bash /arch-setup.sh"
 
 sudo rm -f "${ROOTFS}/arch-setup.sh"
 
