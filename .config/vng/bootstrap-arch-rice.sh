@@ -52,64 +52,48 @@ sudo tee "${ROOTFS}/arch-setup.sh" > /dev/null << 'SETUPEOF'
 #!/bin/bash
 set -euo pipefail
 
-# Append geo mirror (bootstrap mirrorlist has all commented out)
-echo "Server = https://geo.mirror.pkgbuild.com/\$repo/os/\$arch" \
-    >> /etc/pacman.d/mirrorlist
-
-echo "==> Initializing pacman keyring..."
+# Keyring
 pacman-key --init
 pacman-key --populate archlinux
 
-echo "==> Syncing packages..."
-pacman -Syu --noconfirm
+# Mirror
+echo "Server = https://geo.mirror.pkgbuild.com/\$repo/os/\$arch" \
+    >> /etc/pacman.d/mirrorlist
 
-echo "==> Installing base..."
-pacman -S --noconfirm --needed \
-    base sudo git curl networkmanager \
-    mesa vulkan-virtio seatd dbus-broker dbus-broker-units
-
-echo "==> Adding nic-repo..."
+# Add nic-repo
 cat >> /etc/pacman.conf << 'EOF'
 
 [nic-repo]
 SigLevel = Optional TrustAll
 Server = https://raw.githubusercontent.com/microservice-tech-nicolas/arch-packages/main/repo/stable/$arch
 EOF
-pacman -Sy --noconfirm
 
-echo "==> Installing full rice stack from nic-repo..."
-pacman -S --noconfirm \
-    arch-core arch-dev arch-pass arch-gui-sway arch-eyecandy \
-    arch-debug arch-ops arch-ai nic-nvim nic-dotfiles
-
-echo "==> Creating rice user..."
-if ! id rice &>/dev/null; then
-    useradd -m -G wheel,seat,video,audio,input -s /bin/zsh rice
-fi
-echo 'rice:rice' | chpasswd
-echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel
-chmod 440 /etc/sudoers.d/wheel
-
-systemctl enable seatd dbus-broker NetworkManager
-
-echo ""
-echo "==> Setup complete! Type 'exit' or poweroff to return to host."
+# Install
+pacman -Syu --noconfirm
+pacman -S --noconfirm arch-full
 SETUPEOF
 
 sudo chmod +x "${ROOTFS}/arch-setup.sh"
 
 echo ""
+echo "==> Booting Arch rootfs with vng --rw --systemd..."
+echo "    Setup script will run automatically inside."
+echo ""
+
+# Boot with --systemd so /etc is writable (CoW overlay), run setup script as a
+# systemd transient service via the virtme-ng exec mechanism
+vng -r \
+    --root "${ROOTFS}" \
+    --user root \
+    --rw \
+    --network user \
+    --systemd \
+    -- bash /arch-setup.sh
+
+sudo rm -f "${ROOTFS}/arch-setup.sh"
+
+echo ""
 echo "=============================="
-echo " Arch rootfs ready at ${ROOTFS}"
+echo " Done! Run: ~/.config/vng/rice.sh"
 echo "=============================="
-echo ""
-echo " Now boot it with vng and run the setup script inside:"
-echo ""
-echo "   vng -r --root ${ROOTFS} --user root --rw --network user --systemd"
-echo ""
-echo " Inside the VM, run:"
-echo "   bash /arch-setup.sh"
-echo ""
-echo " Then exit the VM. Your rice is ready."
-echo " After that: ~/.config/vng/rice.sh"
 echo ""
