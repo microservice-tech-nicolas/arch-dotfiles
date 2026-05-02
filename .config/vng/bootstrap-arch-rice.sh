@@ -76,24 +76,14 @@ SETUPEOF
 sudo chmod +x "${ROOTFS}/arch-setup.sh"
 
 echo ""
-echo "==> Booting Arch rootfs with vng --rw --systemd..."
-echo "    Setup script will run automatically inside."
+echo "================================================"
+echo " Rootfs ready. Now run:"
 echo ""
-
-# Boot with --systemd so /etc is writable (CoW overlay), run setup script as a
-# systemd transient service via the virtme-ng exec mechanism
-vng -r \
-    --root "${ROOTFS}" \
-    --user root \
-    --rw \
-    --network user \
-    --systemd \
-    --exec "bash /arch-setup.sh"
-
-sudo rm -f "${ROOTFS}/arch-setup.sh"
-
+echo "   vng -r --root ${ROOTFS} --user root --rw --network user --systemd"
 echo ""
-echo "=============================="
-echo " Done! Run: ~/.config/vng/rice.sh"
-echo "=============================="
+echo " Inside the VM, run:"
+echo "   bash /arch-setup.sh"
+echo ""
+echo " Then exit. After that: ~/.config/vng/rice.sh"
+echo "================================================"
 echo ""
