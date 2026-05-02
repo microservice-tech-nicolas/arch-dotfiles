@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 # rice.sh — daily ricing loop for arch-rice vng VM
-# Boots the Arch rootfs with dotfiles overlaid from the host.
-# No --rw: each boot is a clean snapshot — exit and rerun to reset.
+# Boots the Arch rootfs with host dotfiles visible read-only inside the guest.
+# Default (no --rw): snapshot mode — exit and rerun to get a clean slate.
 #
 # Usage:
-#   rice.sh            — boot into sway (full GUI)
-#   rice.sh shell      — boot into a zsh shell (no GUI, for testing)
-#   rice.sh rw         — boot with persistent writes (use sparingly)
-#   rice.sh update     — boot with --rw and run pacman -Syu inside
+#   rice.sh            — boot into sway (full GUI, snapshot)
+#   rice.sh shell      — drop into zsh (no GUI, snapshot)
+#   rice.sh rw         — persistent writes (use for installs/config changes)
+#   rice.sh update     — upgrade all nic packages inside the VM (persistent)
 
 ROOTFS="${HOME}/rootfs/arch-rice"
-DOTFILES="${HOME}/.dotfiles"   # bare clone managed by nic-dotfiles / dot alias
 
 # ── preflight ────────────────────────────────────────────────────────────────
 if [ ! -d "${ROOTFS}" ]; then
@@ -18,57 +17,63 @@ if [ ! -d "${ROOTFS}" ]; then
   echo "Run bootstrap first: ~/.config/vng/bootstrap-arch-rice.sh"
   exit 1
 fi
-
 command -v vng >/dev/null || { echo "ERROR: vng not found."; exit 1; }
 
 MODE="${1:-gui}"
 
 # ── base vng flags ───────────────────────────────────────────────────────────
 VNG_ARGS=(
-  --root "${ROOTFS}"
-  --user rice
-  --systemd
-  -g                          # enable graphical output (virtio-gpu)
+  --root    "${ROOTFS}"
+  --user    rice
+  --network user          # NAT networking so pacman/git work inside guest
+  --graphics              # virtio-gpu output
 )
 
-# Overlay host dotfiles into guest home — edits on host appear instantly
-# The bare repo has the work-tree checked out; we mount the real dirs
+# ── mount host dotfiles read-only inside the guest ───────────────────────────
+# --rodir=guestpath=hostpath makes the host dir visible at guestpath in the VM
+# Changes made in the guest to these dirs do NOT touch the host.
 if [ -d "${HOME}/.config" ]; then
-  VNG_ARGS+=(--overlay-rwdir "/home/rice/.config=${HOME}/.config")
+  VNG_ARGS+=(--rodir="/home/rice/.config=${HOME}/.config")
 fi
 if [ -f "${HOME}/.zshrc" ]; then
-  VNG_ARGS+=(--addFile "${HOME}/.zshrc":/home/rice/.zshrc)
+  # Individual files: mount parent dir read-only and symlink, or use rwdir
+  # Simplest: mount home dotfiles dir read-only
+  VNG_ARGS+=(--rodir="/home/rice/.zshrc=${HOME}/.zshrc")
 fi
 if [ -f "${HOME}/.zprofile" ]; then
-  VNG_ARGS+=(--addFile "${HOME}/.zprofile":/home/rice/.zprofile)
+  VNG_ARGS+=(--rodir="/home/rice/.zprofile=${HOME}/.zprofile")
 fi
 
+# ── dispatch ─────────────────────────────────────────────────────────────────
 case "${MODE}" in
   gui)
-    echo "==> Booting arch-rice into sway (snapshot mode — changes lost on exit)..."
-    echo "    Mod+b to pick wallpaper, Mod+Enter for terminal."
+    echo "==> Booting arch-rice into sway (snapshot — changes lost on exit)..."
+    echo "    Mod+b  wallpaper picker"
+    echo "    Mod+Enter  terminal"
     echo ""
-    vng "${VNG_ARGS[@]}" -- sway
+    # --exec runs a command as the user after login, without --systemd
+    vng "${VNG_ARGS[@]}" --exec sway
     ;;
 
   shell)
-    echo "==> Booting arch-rice into zsh shell (snapshot mode)..."
-    vng "${VNG_ARGS[@]}" -- zsh
+    echo "==> Booting arch-rice into zsh (snapshot mode)..."
+    vng "${VNG_ARGS[@]}" --exec zsh
     ;;
 
   rw)
     echo "==> Booting arch-rice with PERSISTENT writes..."
     echo "    WARNING: changes survive across reboots."
-    vng "${VNG_ARGS[@]}" --rw -- zsh
+    vng "${VNG_ARGS[@]}" --rw --exec zsh
     ;;
 
   update)
     echo "==> Updating arch-rice packages (persistent write)..."
-    vng "${VNG_ARGS[@]}" --rw -- bash -c '
-      pacman -Syu --noconfirm
-      pacman -S --noconfirm arch-core arch-dev arch-gui-sway arch-eyecandy \
-        arch-debug arch-ops arch-ai nic-nvim nic-dotfiles
-      echo "Update complete."
+    vng "${VNG_ARGS[@]}" --rw --exec bash -c '
+      pacman -Syu --noconfirm && \
+      pacman -S --noconfirm \
+        arch-core arch-dev arch-gui-sway arch-eyecandy \
+        arch-debug arch-ops arch-ai nic-nvim nic-dotfiles && \
+      echo "==> Update complete."
     '
     ;;
 
